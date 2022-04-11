@@ -17,7 +17,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/github/smimesign/ietf-cms/oid"
+	"github.com/VaultID/smimesign/ietf-cms/oid"
 )
 
 // ASN1Error is an error from parsing ASN.1 structures.
