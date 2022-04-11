@@ -626,6 +626,11 @@ func NewSignedData(eci EncapsulatedContentInfo) (*SignedData, error) {
 
 // AddSignerInfo adds a SignerInfo to the SignedData.
 func (sd *SignedData) AddSignerInfo(chain []*x509.Certificate, signer crypto.Signer) error {
+	return sd.AddSignerInfoToHash(chain, signer, []byte{})
+}
+
+// AddSignerInfo adds a SignerInfo to the SignedData, but sign the informed digest if it is not empty.
+func (sd *SignedData) AddSignerInfoToHash(chain []*x509.Certificate, signer crypto.Signer, digest []byte) error {
 	// figure out which certificate is associated with signer.
 	pub, err := x509.MarshalPKIXPublicKey(signer.Public())
 	if err != nil {
@@ -693,8 +698,17 @@ func (sd *SignedData) AddSignerInfo(chain []*x509.Certificate, signer crypto.Sig
 		return err
 	}
 	md := hash.New()
-	if _, err = md.Write(content); err != nil {
-		return err
+
+	var messageDigest []byte
+
+	if len(digest) > 0 {
+		messageDigest = digest
+	} else {
+		if _, err = md.Write(content); err != nil {
+			return err
+		}
+
+		messageDigest = md.Sum(nil)
 	}
 
 	// Build our SignedAttributes
@@ -702,7 +716,7 @@ func (sd *SignedData) AddSignerInfo(chain []*x509.Certificate, signer crypto.Sig
 	if err != nil {
 		return err
 	}
-	mdAttr, err := NewAttribute(oid.AttributeMessageDigest, md.Sum(nil))
+	mdAttr, err := NewAttribute(oid.AttributeMessageDigest, messageDigest)
 	if err != nil {
 		return err
 	}

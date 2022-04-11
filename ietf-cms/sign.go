@@ -47,3 +47,22 @@ func SignDetached(data []byte, chain []*x509.Certificate, signer crypto.Signer) 
 func (sd *SignedData) Sign(chain []*x509.Certificate, signer crypto.Signer) error {
 	return sd.psd.AddSignerInfo(chain, signer)
 }
+
+// SignHash creates a detached CMS SignedData from the informed hash and signs it
+// with signer. At minimum, chain must contain the leaf certificate associated
+// with the signer. Any additional intermediates will also be added to the
+// SignedData. The DER encoded CMS message is returned.
+func SignHash(digest []byte, chain []*x509.Certificate, signer crypto.Signer) ([]byte, error) {
+	sd, err := NewSignedData([]byte{0})
+	if err != nil {
+		return nil, err
+	}
+
+	if err = sd.psd.AddSignerInfoToHash(chain, signer, digest); err != nil {
+		return nil, err
+	}
+
+	sd.Detached()
+
+	return sd.ToDER()
+}
