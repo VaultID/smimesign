@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/VaultID/smimesign/ietf-cms/asn1custom"
 	"github.com/VaultID/smimesign/ietf-cms/oid"
 	"github.com/VaultID/smimesign/ietf-cms/protocol"
 )
@@ -82,7 +83,7 @@ func (req Request) Matches(tsti Info) bool {
 func (req Request) Do(url string) (Response, error) {
 	var nilResp Response
 
-	reqDER, err := asn1.Marshal(req)
+	reqDER, err := asn1custom.Marshal(req)
 	if err != nil {
 		return nilResp, err
 	}
@@ -129,7 +130,7 @@ func ParseResponse(ber []byte) (Response, error) {
 		return resp, err
 	}
 
-	rest, err := asn1.Unmarshal(der, &resp)
+	rest, err := asn1custom.Unmarshal(der, &resp)
 	if err != nil {
 		return resp, err
 	}
@@ -256,7 +257,7 @@ func (ft PKIFreeText) Strings() ([]string, error) {
 	strs := make([]string, len(ft))
 
 	for i := range ft {
-		if rest, err := asn1.Unmarshal(ft[i].FullBytes, &strs[i]); err != nil {
+		if rest, err := asn1custom.Unmarshal(ft[i].FullBytes, &strs[i]); err != nil {
 			return nil, err
 		} else if len(rest) != 0 {
 			return nil, protocol.ErrTrailingData
@@ -315,7 +316,7 @@ func ParseInfo(eci protocol.EncapsulatedContentInfo) (Info, error) {
 		return i, protocol.ASN1Error{Message: "missing EContent for non data type"}
 	}
 
-	if rest, err := asn1.Unmarshal(ecval, &i); err != nil {
+	if rest, err := asn1custom.Unmarshal(ecval, &i); err != nil {
 		return i, err
 	} else if len(rest) > 0 {
 		return i, protocol.ErrTrailingData

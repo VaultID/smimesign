@@ -17,6 +17,8 @@ import (
 	"sort"
 	"time"
 
+	asn1custom "github.com/VaultID/smimesign/ietf-cms/asn1custom"
+
 	"github.com/VaultID/smimesign/ietf-cms/oid"
 )
 
@@ -68,7 +70,7 @@ func ParseContentInfo(ber []byte) (ci ContentInfo, err error) {
 	}
 
 	var rest []byte
-	if rest, err = asn1.Unmarshal(der, &ci); err != nil {
+	if rest, err = asn1custom.Unmarshal(der, &ci); err != nil {
 		return
 	}
 	if len(rest) > 0 {
@@ -85,7 +87,7 @@ func (ci ContentInfo) SignedDataContent() (*SignedData, error) {
 	}
 
 	sd := new(SignedData)
-	if rest, err := asn1.Unmarshal(ci.Content.Bytes, sd); err != nil {
+	if rest, err := asn1custom.Unmarshal(ci.Content.Bytes, sd); err != nil {
 		return nil, err
 	} else if len(rest) > 0 {
 		return nil, ErrTrailingData
@@ -112,7 +114,7 @@ func NewDataEncapsulatedContentInfo(data []byte) (EncapsulatedContentInfo, error
 
 // NewEncapsulatedContentInfo creates a new EncapsulatedContentInfo.
 func NewEncapsulatedContentInfo(contentType asn1.ObjectIdentifier, content []byte) (EncapsulatedContentInfo, error) {
-	octets, err := asn1.Marshal(asn1.RawValue{
+	octets, err := asn1custom.Marshal(asn1.RawValue{
 		Class:      asn1.ClassUniversal,
 		Tag:        asn1.TagOctetString,
 		Bytes:      content,
@@ -147,7 +149,7 @@ func (eci EncapsulatedContentInfo) EContentValue() ([]byte, error) {
 	// EContent.Bytes is the encoded OCTET STRING, which is what we really want
 	// the value of.
 	var octets asn1.RawValue
-	if rest, err := asn1.Unmarshal(eci.EContent.Bytes, &octets); err != nil {
+	if rest, err := asn1custom.Unmarshal(eci.EContent.Bytes, &octets); err != nil {
 		return nil, err
 	} else if len(rest) > 0 {
 		return nil, ErrTrailingData
@@ -167,7 +169,7 @@ func (eci EncapsulatedContentInfo) EContentValue() ([]byte, error) {
 		rest := octets.Bytes
 		for len(rest) > 0 {
 			var err error
-			if rest, err = asn1.Unmarshal(rest, &octets); err != nil {
+			if rest, err = asn1custom.Unmarshal(rest, &octets); err != nil {
 				return nil, err
 			}
 
@@ -214,12 +216,12 @@ type Attribute struct {
 // NewAttribute creates a single-value Attribute.
 func NewAttribute(typ asn1.ObjectIdentifier, val interface{}) (attr Attribute, err error) {
 	var der []byte
-	if der, err = asn1.Marshal(val); err != nil {
+	if der, err = asn1custom.Marshal(val); err != nil {
 		return
 	}
 
 	var rv asn1.RawValue
-	if _, err = asn1.Unmarshal(der, &rv); err != nil {
+	if _, err = asn1custom.Unmarshal(der, &rv); err != nil {
 		return
 	}
 
@@ -254,7 +256,7 @@ type Attributes []Attribute
 //   MUST be included in the message digest calculation along with the length
 //   and content octets of the SignedAttributes value.
 func (attrs Attributes) MarshaledForSigning() ([]byte, error) {
-	seq, err := asn1.Marshal(struct {
+	seq, err := asn1custom.Marshal(struct {
 		Attributes `asn1:"set"`
 	}{attrs})
 
@@ -264,7 +266,7 @@ func (attrs Attributes) MarshaledForSigning() ([]byte, error) {
 
 	// unwrap the outer SEQUENCE
 	var raw asn1.RawValue
-	if _, err = asn1.Unmarshal(seq, &raw); err != nil {
+	if _, err = asn1custom.Unmarshal(seq, &raw); err != nil {
 		return nil, err
 	}
 
@@ -276,7 +278,7 @@ func (attrs Attributes) MarshaledForSigning() ([]byte, error) {
 // MarshaledForSigning because when verifying attributes, we need to
 // use the received order.
 func (attrs Attributes) MarshaledForVerification() ([]byte, error) {
-	seq, err := asn1.Marshal(struct {
+	seq, err := asn1custom.Marshal(struct {
 		Attributes `asn1:"sequence"`
 	}{attrs})
 
@@ -286,7 +288,7 @@ func (attrs Attributes) MarshaledForVerification() ([]byte, error) {
 
 	// unwrap the outer SEQUENCE
 	var raw asn1.RawValue
-	if _, err = asn1.Unmarshal(seq, &raw); err != nil {
+	if _, err = asn1custom.Unmarshal(seq, &raw); err != nil {
 		return nil, err
 	}
 
@@ -365,16 +367,16 @@ func NewIssuerAndSerialNumber(cert *x509.Certificate) (rv asn1.RawValue, err err
 		SerialNumber: new(big.Int).Set(cert.SerialNumber),
 	}
 
-	if _, err = asn1.Unmarshal(cert.RawIssuer, &sid.Issuer); err != nil {
+	if _, err = asn1custom.Unmarshal(cert.RawIssuer, &sid.Issuer); err != nil {
 		return
 	}
 
 	var der []byte
-	if der, err = asn1.Marshal(sid); err != nil {
+	if der, err = asn1custom.Marshal(sid); err != nil {
 		return
 	}
 
-	if _, err = asn1.Unmarshal(der, &rv); err != nil {
+	if _, err = asn1custom.Unmarshal(der, &rv); err != nil {
 		return
 	}
 
@@ -461,7 +463,7 @@ func (si SignerInfo) issuerAndSerialNumberSID() (isn IssuerAndSerialNumber, err 
 	}
 
 	var rest []byte
-	if rest, err = asn1.Unmarshal(si.SID.FullBytes, &isn); err == nil && len(rest) > 0 {
+	if rest, err = asn1custom.Unmarshal(si.SID.FullBytes, &isn); err == nil && len(rest) > 0 {
 		err = ErrTrailingData
 	}
 
@@ -513,7 +515,7 @@ func (si SignerInfo) GetContentTypeAttribute() (asn1.ObjectIdentifier, error) {
 	}
 
 	var ct asn1.ObjectIdentifier
-	if rest, err := asn1.Unmarshal(rv.FullBytes, &ct); err != nil {
+	if rest, err := asn1custom.Unmarshal(rv.FullBytes, &ct); err != nil {
 		return nil, err
 	} else if len(rest) > 0 {
 		return nil, ErrTrailingData
@@ -552,7 +554,7 @@ func (si SignerInfo) GetSigningTimeAttribute() (time.Time, error) {
 		return t, ASN1Error{"bad class or tag"}
 	}
 
-	if rest, err := asn1.Unmarshal(rv.FullBytes, &t); err != nil {
+	if rest, err := asn1custom.Unmarshal(rv.FullBytes, &t); err != nil {
 		return t, err
 	} else if len(rest) > 0 {
 		return t, ErrTrailingData
@@ -793,7 +795,7 @@ func (sd *SignedData) AddCertificate(cert *x509.Certificate) error {
 	}
 
 	var rv asn1.RawValue
-	if _, err := asn1.Unmarshal(cert.Raw, &rv); err != nil {
+	if _, err := asn1custom.Unmarshal(cert.Raw, &rv); err != nil {
 		return err
 	}
 
@@ -846,7 +848,7 @@ func (sd *SignedData) X509Certificates() ([]*x509.Certificate, error) {
 func (sd *SignedData) ContentInfo() (ContentInfo, error) {
 	var nilCI ContentInfo
 
-	der, err := asn1.Marshal(*sd)
+	der, err := asn1custom.Marshal(*sd)
 	if err != nil {
 		return nilCI, err
 	}
@@ -871,5 +873,5 @@ func (sd *SignedData) ContentInfoDER() ([]byte, error) {
 		return nil, err
 	}
 
-	return asn1.Marshal(ci)
+	return asn1custom.Marshal(ci)
 }
