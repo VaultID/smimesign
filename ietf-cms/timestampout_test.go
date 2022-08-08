@@ -3,6 +3,8 @@ package cms
 import (
 	"crypto"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -26,7 +28,8 @@ func (ts TestSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts)
 }
 
 func TestOutTimestamp(t *testing.T) {
-	rawSignature := "RBnP3iKxbzHqcX6+JLhMrAVpEqAyi85STbbaOlwg7zc7zYtmp/se5BjAzxq25ATL0UBma9cGCYfTsP9P3abzKfDtIq71OLHNnL2pqehwelLSW+qNdKIKe421P/wNigIuWjW1/h4msJ9oqbDCWtt14Kpvw760nQOmQYcv23hHi1d3WpAiki23wBVVwXn40mmlYzqC+Qh3GDw47hW4LXGTI2oG8yetnO7Cu40tQXJBTaJuKMrW6aSzXDkhijogkORe0FAsLXimFKSsiwcF24pTeZnXl7sF96GUfGzpH2mOo5A3Cu4WyHNj6LEua9jJI8vyfUuY9I7k9xtiMm9u/3g2DA=="
+	digest := "196f2abba063cff054042ed77cda5a4e4cb35f0d5ecac23a08a3f7345a001423"
+	rawSignature := "DJV2KhL7jZvyPJzvMbze8N29nCuU9g+hw99WqC87WVyWVSXhL8sUvafa+p4wW7aEeElUGQceToAhgc+fmpS+uZhDjWUoeefqI+iqQff7qxKAfnLHaQnMsB70uYpZ2051m94u6oJN4tycGqiZdzXkeUvecTxIp03WNOb1K2QfqjF4e6mnEjbO3SDYS7V3j4W/xH3/HPpPnb+Cx2d5nn8aUrkJ48Hze1fk9qIuU+NpTFukMYh6ICxO83lTLNryGQTi6lhMCxGNzvVpobx0Ce1k0twITeFezpo+bvVHjkJcfzvqmFx5TI1OfAXR+3f3/SthbZmwBDAe0F4A1wbdVDmAyA=="
 	pemCertificate := `-----BEGIN CERTIFICATE-----
 MIIHAjCCBOqgAwIBAgIIET0YCBM7vrwwDQYJKoZIhvcNAQELBQAwgYAxCzAJBgNV
 BAYTAkJSMRMwEQYDVQQKEwpJQ1AtQnJhc2lsMRkwFwYDVQQLExBBQyBSQUlaIHRl
@@ -81,19 +84,36 @@ cFoCiORE2/pWJlDVQct6R+kDkQAETEQm9/WJK9fZOjcElxvUj62Y187tuSE0UVeW
 	}
 	certs = append(certs, cert)
 
-	signer := TestSigner{
-		certificate:     cert,
-		signatureDigest: []byte(rawSignature),
-	}
-
-	//**
-	sd, err := NewSignedData([]byte(rawSignature))
+	//***
+	digestByte, err := hex.DecodeString(digest)
 	if err != nil {
 		panic(err)
 	}
-	if err = sd.Sign([]*x509.Certificate{cert}, signer); err != nil {
+
+	rawByte, err := base64.StdEncoding.DecodeString(rawSignature)
+	if err != nil {
 		panic(err)
 	}
+
+	signer := TestSigner{
+		certificate:     cert,
+		signatureDigest: rawByte,
+	}
+
+	//***
+	sd, err := CreateSignedDataHash(digestByte, certs, signer)
+	if err != nil {
+		panic(err)
+	}
+
+	//***
+	// sd, err := NewSignedData([]byte(rawSignature))
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if err = sd.Sign([]*x509.Certificate{cert}, signer); err != nil {
+	// 	panic(err)
+	// }
 
 	sd.Detached()
 
@@ -108,9 +128,9 @@ cFoCiORE2/pWJlDVQct6R+kDkQAETEQm9/WJK9fZOjcElxvUj62Y187tuSE0UVeW
 
 	//**
 	// der, err := SignHash([]byte(rawSignature), certs, signer)
-	// fmt.Println(der)
+	fmt.Println(der)
 
-	// f, err := os.Create("data3.der")
+	// f, err := os.Create("data_timestamp.der")
 	// if err != nil {
 	// 	panic(err)
 	// }
@@ -122,10 +142,22 @@ cFoCiORE2/pWJlDVQct6R+kDkQAETEQm9/WJK9fZOjcElxvUj62Y187tuSE0UVeW
 
 	fmt.Println("done")
 
-	fmt.Println(der)
+	// fmt.Println(der)
 	// strx := string(der[:])
 	// fmt.Println(strx)
 
 	// sign, err := SignHash([]byte(rawSignature), certs, ts)
 	// fmt.Println(sign)
+}
+
+func asBits(val uint64) []uint64 {
+	bits := []uint64{}
+	for i := 0; i < 24; i++ {
+		bits = append([]uint64{val & 0x1}, bits...)
+		// or
+		// bits = append(bits, val & 0x1)
+		// depending on the order you want
+		val = val >> 1
+	}
+	return bits
 }

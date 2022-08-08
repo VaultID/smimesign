@@ -53,6 +53,17 @@ func (sd *SignedData) Sign(chain []*x509.Certificate, signer crypto.Signer) erro
 // with the signer. Any additional intermediates will also be added to the
 // SignedData. The DER encoded CMS message is returned.
 func SignHash(digest []byte, chain []*x509.Certificate, signer crypto.Signer) ([]byte, error) {
+	sd, err := CreateSignedDataHash(digest, chain, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	sd.Detached()
+
+	return sd.ToDER()
+}
+
+func CreateSignedDataHash(digest []byte, chain []*x509.Certificate, signer crypto.Signer) (*SignedData, error) {
 	sd, err := NewSignedData([]byte{0})
 	if err != nil {
 		return nil, err
@@ -61,8 +72,5 @@ func SignHash(digest []byte, chain []*x509.Certificate, signer crypto.Signer) ([
 	if err = sd.psd.AddSignerInfoToHash(chain, signer, digest); err != nil {
 		return nil, err
 	}
-
-	sd.Detached()
-
-	return sd.ToDER()
+	return sd, nil
 }
